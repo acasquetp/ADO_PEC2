@@ -1,30 +1,979 @@
 ---
 title: "PEC2"
 author: "Casquet Perez, Anna"
-date: "7/6/2020"
-output: html_document
+date: "1/6/2020"
+output:
+  html_document:
+    code_folding: hide
+    number_sections: yes
+    toc: yes
+    toc_float: yes
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+#Si se requiere instalar los paquetes básicos para reproducir el estudio 
+#poner la variable firsstime=T
+
+options(repos="https://cran.rstudio.com")
+
+firsttime <- T
+if(firsttime){
+
+
+if(!require(DESeq2)) BiocManager::install("DESeq2")
+if(!require(pheatmap)) install.packages("pheatmap", dep=TRUE)
+if(!require(RColorBrewer)) install.packages("RColorBrewer", dep=TRUE)
+if(!require(ggplot2)) install.packages("ggplot2", dep=TRUE)
+if(!require(org.Hs.eg.db)) BiocManager::install("org.Hs.eg.db")
+if(!require(AnnotationDbi)) BiocManager::install("AnnotationDbi")
+
+}
+
+library(readr)
+library(dplyr)
+
+setwd("~/UOC_ANNA/ADO_PEC2/ADO_PEC2")
+workingDir <-getwd()
+dataDir <-file.path(workingDir, "data")
+resultsDir <- file.path(workingDir, "results")
+
 ```
 
-## R Markdown
+Los archivos de este estudio se pueden encontrar aquí: https://github.com/acasquetp/ADO_PEC2.git
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+# Abstract
 
-```{r cars}
-summary(cars)
+Con los datos pertenecientes a un análisis del tiroides en donde se compara tres tipos de infiltración medido en un total de 292 muestras pertenecientes a tres grupos: Not infiltrated tissues (NIT): 236 samples;Small focal infiltrates (SFI): 42 samples;Extensive lymphoid infiltrates (ELI): 14 samples.Se extrae diez muestras aleatorias de cada grupo y se procede a realizar un análisis de expresión diferencial. Este analisis aporta una lista de genes diferencialmente expresados.
+
+# Objetivo
+
+El objetivo de este estudio es identificar los genes diferencialmente expresados segun el nivel de infiltración en la tiroides humana.
+
+# Materiales y Métodos
+
+## Naturaleza de los datos, tipo de experimento, diseño experimental
+
+Los datos proceden del repositorio GTEx pertenecientes a un estudio de tiroides, en formato csv. Se trata de dos archivos csv con los targets y los counts.
+
+Para realizar el experimento, se recogen 10 muestras aleatorias de cada grupo y se procede a su comparación en la expresion génica.
+
+## Métodos y herramientas
+
+### Software utilizado
+
+La ejecución de este trabajo se lleva a cabo mediante el software RStudio, con la versión de R 4.0.
+Para la documentación se ha utilizado Rmarkdown.
+
+### Procedimiento general de análisis
+
+1. Preprocesado de datos
+ + Filtrado
+ + Normalización
+2. Análisi de expresión diferencial
+3. Anotación
+4. Análisi de significación Biológica
+
+### Procesos
+
+#### Carga de datos y extraccion de muestras aleatorias
+
+Se ha usado el comando read para leer los dos archivos csv con los datos originales.
+
+```{r load_data, include=TRUE}
+
+counts = read.csv("./data/counts.csv",header=T,sep = ";")
+target = read.csv("./data/targets.csv",header=T,sep = ",")
+
 ```
 
-## Including Plots
+Se ha procedido a seleccionar de forma aleatoria 10 muestras de cada grupo con el comando subset y sample_n.
 
-You can also embed plots, for example:
+A continuación se han unido todos los datos en la variable target_final y se ha procedido a factorizar según el grupo.
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r seleccionMuestras, include=TRUE}
+
+
+set.seed(1907)
+
+target_NIT <- subset(target, target$Group == "NIT")
+target_SFI <- subset(target, target$Group == "SFI")
+target_ELI <- subset(target, target$Group == "ELI")
+
+
+target_NIT_10 <- dplyr::sample_n(target_NIT, 10, replace = FALSE)
+target_SFI_10 <- dplyr::sample_n(target_SFI, 10)
+target_ELI_10 <- dplyr::sample_n(target_ELI, 10)
+
+target_final = rbind(target_NIT_10, target_SFI_10, target_ELI_10)
+
+target_final$Group <- factor(target_final$Group, levels = c("NIT", "SFI", "ELI"))
+
+
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Se procede a modificar el nombre de la muestra en target_final para que sea concordante con counts y se procede a seleccionar las 30 muestras en counts.
+
+```{r preprocesadoMuestras, include=TRUE}
+
+# Se modifica el Sample_Name para que cuadre con el formato de counts
+
+target_final$Sample_Name <- gsub("-",".", target_final$Sample_Name)
+
+# Se selecciona las 30 muestras correspondientes del archivo counts
+
+library(dplyr)
+count_final=counts[,c(target_final$Sample_Name)]
+rownames(count_final)=counts$X
+
+
+```
+#### Preparación objeto DeSeqDataSet
+
+A continuación se procede a preparar el objeto DESeqDataSet a partir de la matriz de counts.
+
+```{r prepDESeqDataSet, message=FALSE, echo=FALSE, warning=FALSE, include=TRUE}
+dds <- DESeqDataSetFromMatrix(countData = count_final,colData = target_final, design = ~ Group)
+#dds
+```
+
+#### Filtrado
+
+Una vez preparado el objeto DESeqDataSet, se filtran los datos
+
+```{r filtrado, include=TRUE}
+dds <- dds[rowSums(counts(dds)) > 1, ]
+nrow(dds)
+```
+#### Normalización
+
+Se procede a normalizar los datos usando vst, así se obtienen datos con homocedasticidad y se muestra un boxplot con los resultados.
+
+```{r vst, include=TRUE}
+vsd <- vst(dds, blind = FALSE)
+
+
+```
+
+```{r boxplot1, include=TRUE ,fig.cap="Fig. 1: Datos Normalizados."}
+boxplot(assay(vsd), border = c(rep("coral2", 10), rep("cyan1", 10), rep("darkolivegreen1", 10)), ylab = "Counts", xlab = "Samples", main = "Processed Data", cex.main = 1.1, cex.lab = 0.9, cex.axis = 0.8, las = 3)
+```
+
+
+#### Distancia entre muestras
+
+Se procede a calcular la distancia entre muestras y se representa esta con un gráfico heatmap. Se puede observar un mayor agrupamiento en el grupo ELI
+
+
+```{r distancia, include=TRUE ,fig.cap="Fig. 2: Heatmap."}
+sampleDists <- dist(t(assay(vsd)))
+library("pheatmap")
+library("RColorBrewer")
+sampleDistMatrix <- as.matrix( sampleDists )
+rownames(sampleDistMatrix) <- paste(vsd$ShortName)
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows = sampleDists,
+         clustering_distance_cols = sampleDists,
+         col = colors)
+
+```
+
+#### Análisis de componentes principales
+
+Los colores representan los diferentes grupos y se representa visualmente el agrupamiento de muestras.
+
+```{r pca, include=TRUE,fig.cap="Fig. 3: Análisis de componentes principales."}
+plotPCA(vsd, intgroup = c("Group"))
+```
+
+#### Multidimensional Scaling
+
+Este gráfico muestra el análisis MDS.
+
+```{r mds, include=TRUE ,fig.cap="Fig. 4: Multidimensional Scaling."}
+mds <- as.data.frame(colData(vsd))  %>%
+         cbind(cmdscale(sampleDistMatrix))
+ggplot(mds, aes(x = `1`, y = `2`, color = Group)) +
+  geom_point(size = 3) + coord_fixed()
+  
+```
+#### Gene Clustering
+
+Clúster de la muestra de los genes más variables. Selección de los 20 genes con la más alta variabilidad.
+
+```{r GeneClistering, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 5: Gen Clustering de los 20 genes con mas variabilidad"}
+library("genefilter")
+topVarGenes <- head(order(rowVars(assay(vsd)), decreasing = TRUE), 20)
+
+mat  <- assay(vsd)[topVarGenes, ]
+mat  <- mat - rowMeans(mat)
+anno <- as.data.frame(colData(vsd)[, "Group"])
+rownames(anno) <- rownames(colData(vsd))
+colnames(anno) <- "Group"
+pheatmap(mat, annotation_col = anno)
+
+```
+
+
+# Resultados
+
+## Identificación de genes diferencialmente expresados
+
+La identificacion de genes diferencialmente expresados se ejecuta mediante la orden DESeq, sobre el objeto DeSeqDataSet, así que no es necesario realizar nigun tipo de ajuste de los datos.
+
+```{r idGenDifExp, message=FALSE, echo=FALSE, warning=FALSE, include=TRUE}
+dds <- DESeq(dds, parallel =TRUE)
+
+
+```
+
+### SFI-NIT
+
+En la comparación SFI vs NIT encontramos 271 genes sobreexpresados y 311 infraexpresados. 
+
+```{r sfiVSnit, include=FALSE}
+SFI_NIT_res <- results(dds, contrast=c("Group","SFI","NIT"), alpha = 0.05)
+SFI_NIT_res
+
+```
+```{r sfiVSnit2, include=TRUE}
+
+summary(SFI_NIT_res)
+
+table(SFI_NIT_res$padj < 0.05)
+
+SFI_NIT_resSig <- subset(SFI_NIT_res, padj < 0.1)
+head(SFI_NIT_resSig[ order(SFI_NIT_resSig$log2FoldChange), ])
+
+```
+
+### ELI-NIT 
+
+En la comparación ELI vs NIT encontramos 5124 genes sobreexpresados y 3541 infraexpresados. 
+
+```{r eliVSnit, include=FALSE}
+### ELI-NIT
+ELI_NIT_res <- results(dds, contrast=c("Group","ELI","NIT"), alpha = 0.05)
+ELI_NIT_res
+```
+```{r eliVSnit2, include=TRUE}
+summary(ELI_NIT_res)
+
+table(ELI_NIT_res$padj < 0.05)
+
+ELI_NIT_resSig <- subset(ELI_NIT_res, padj < 0.1)
+head(ELI_NIT_resSig[ order(ELI_NIT_resSig$log2FoldChange), ])
+
+```
+
+### ELI-SFI
+
+En la comparación ELI vs SFI encontramos 3737 genes sobreexpresados y 2203 infraexpresados. 
+
+```{r eliVSsfi, include=FALSE}
+ELI_SFI_res <- results(dds, contrast=c("Group","ELI","SFI"), alpha = 0.05)
+ELI_SFI_res
+```
+```{r eliVSsfi2, include=TRUE}
+summary(ELI_SFI_res)
+
+table(ELI_SFI_res$padj < 0.05)
+
+ELI_SFI_resSig <- subset(ELI_SFI_res, padj < 0.1)
+head(ELI_SFI_resSig[ order(ELI_SFI_resSig$log2FoldChange), ])
+
+
+```
+### Volcano Plots
+
+Volcano plot SFI-NIT
+
+```{r volcano1, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 6: Volcano plot  SFI vs. NIT"}
+SFI_NIT_res2 <- as.data.frame(SFI_NIT_res)
+
+plot(SFI_NIT_res2$log2FoldChange, -log10(SFI_NIT_res2$padj), pch=20, main="Volcano plot SFI-NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+with(subset(SFI_NIT_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
+abline(v=0, col="black", lty=3, lwd=1.0)
+abline(v=-2, col="black", lty=4, lwd=2.0)
+abline(v=2, col="black", lty=4, lwd=2.0)
+abline(h=-log10(max(SFI_NIT_res2$pvalue[SFI_NIT_res2$padj<0.05], na.rm=TRUE)), col="black", lty=4, lwd=2.0)
+
+```
+
+Volcano plot ELI-NIT
+```{r volcano2, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 7: Volcano plot  ELI vs. NIT"}
+ELI_NIT_res2 <- as.data.frame(ELI_NIT_res)
+
+plot(ELI_NIT_res2$log2FoldChange, -log10(ELI_NIT_res2$padj), pch=20, main="Volcano plot ELI-NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+with(subset(ELI_NIT_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
+abline(v=0, col="black", lty=3, lwd=1.0)
+abline(v=-2, col="black", lty=4, lwd=2.0)
+abline(v=2, col="black", lty=4, lwd=2.0)
+abline(h=-log10(max(ELI_NIT_res2$pvalue[ELI_NIT_res2$padj<0.05], na.rm=TRUE)), col="black", lty=4, lwd=2.0)
+
+```
+
+Volcano plot ELI-SFI
+```{r volcano3, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 8: Volcano plot  ELI vs. SFI"}
+ELI_SFI_res2 <- as.data.frame(ELI_SFI_res)
+
+plot(ELI_SFI_res2$log2FoldChange, -log10(ELI_SFI_res2$padj), pch=20, main="Volcano plot ELI-SFI", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+with(subset(ELI_SFI_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
+abline(v=0, col="black", lty=3, lwd=1.0)
+abline(v=-2, col="black", lty=4, lwd=2.0)
+abline(v=2, col="black", lty=4, lwd=2.0)
+abline(h=-log10(max(ELI_SFI_res2$pvalue[ELI_SFI_res2$padj<0.05], na.rm=TRUE)), col="black", lty=4, lwd=2.0)
+
+```
+
+## Anotación de los resultados
+
+Para que se puedan interpretar mejor los resultados se procede a la anotación con ENSEMBL de estos. 
+
+### SFI-NIT
+
+```{r AnotacionSFIvsNIT , include=FALSE }
+# normalizamos los nombres de las filas para poder cuadrarlos 
+rownames(SFI_NIT_res)<- gsub("\\..*","", rownames(SFI_NIT_res))
+
+library("AnnotationDbi")
+SFI_NIT_res$symbol <- mapIds(org.Hs.eg.db,
+                           keys = rownames(SFI_NIT_res),
+                           column = "SYMBOL",
+                           keytype = "ENSEMBL",
+                           multiVals="first")
+SFI_NIT_res$entrez  <- mapIds(org.Hs.eg.db,
+                           keys = rownames(SFI_NIT_res),
+                           column = "ENTREZID",
+                           keytype = "ENSEMBL",
+                           multiVals="first")
+SFI_NIT_resOrdenado <- SFI_NIT_res[order(SFI_NIT_res$pvalue),]
+```
+```{r AnotacionSFIvsNIT2, include=TRUE}
+head(SFI_NIT_resOrdenado)
+
+```
+
+### ELI-NIT
+
+```{r AnotacionELIvsNIT , include=FALSE}
+# normalizamos los nombres de las filas para poder cuadrarlos 
+rownames(ELI_NIT_res)<- gsub("\\..*","", rownames(ELI_NIT_res))
+
+library("AnnotationDbi")
+ELI_NIT_res$symbol <- mapIds(org.Hs.eg.db,
+                           keys = rownames(ELI_NIT_res),
+                           column = "SYMBOL",
+                           keytype = "ENSEMBL",
+                           multiVals="first")
+ELI_NIT_res$entrez  <- mapIds(org.Hs.eg.db,
+                           keys = rownames(ELI_NIT_res),
+                           column = "ENTREZID",
+                           keytype = "ENSEMBL",
+                           multiVals="first")
+ELI_NIT_resOrdenado <- ELI_NIT_res[order(ELI_NIT_res$pvalue),]
+```
+```{r AnotacionELIvsNIT2, include=TRUE}
+head(ELI_NIT_resOrdenado)
+
+```
+
+### ELI-SFI
+
+```{r AnotacionELIIvsNIT , include=FALSE}
+# normalizamos los nombres de las filas para poder cuadrarlos 
+rownames(ELI_SFI_res)<- gsub("\\..*","", rownames(ELI_SFI_res))
+
+library("AnnotationDbi")
+ELI_SFI_res$symbol <- mapIds(org.Hs.eg.db,
+                           keys = rownames(ELI_SFI_res),
+                           column = "SYMBOL",
+                           keytype = "ENSEMBL",
+                           multiVals="first")
+ELI_SFI_res$entrez  <- mapIds(org.Hs.eg.db,
+                           keys = rownames(ELI_SFI_res),
+                           column = "ENTREZID",
+                           keytype = "ENSEMBL",
+                           multiVals="first")
+ELI_SFI_resOrdenado <- ELI_NIT_res[order(ELI_SFI_res$pvalue),]
+```
+```{r AnotacionELIIvsNIT2, include=TRUE}
+head(ELI_SFI_resOrdenado)
+
+```
+## Análisis de significación Biológica
+
+```{r mapped_Genes , include=TRUE}
+mapped_genes2GO <- mappedkeys(org.Hs.egGO)
+mapped_genes2KEGG <- mappedkeys(org.Hs.egPATH)
+mapped_genes <- union(mapped_genes2GO , mapped_genes2KEGG)
+universe = mapped_genes
+```
+Se ha usado el paquete Reactome para realizar los analisis de Gene Enrichment seleccionando aquellos genes con un p-valor menor a 0.05.
+Se procede a realizar dos gráficos por compararción. El primero, un barplot con las 10 vías celulares más significativamente enriquecidas
+Un segundo, un cnetplot con la red de las vías y los genes relacionados.
+
+### SFI-NIT
+
+```{r SignificacionSFI_NIT , include=FALSE}
+# Analisis de enriquecimiento de Pathway
+library(ReactomePA)
+
+SFI_NIT_res2 <- as.data.frame(SFI_NIT_res)
+
+genSFI_NIT_res = c(SFI_NIT_res2[SFI_NIT_res2$padj < 0.05 & SFI_NIT_res2$log2FoldChange > 1, "symbol"], SFI_NIT_res2[SFI_NIT_res2$padj < 0.05 & SFI_NIT_res2$log2FoldChange < -1, "symbol"])
+
+genes = mapIds(org.Hs.eg.db, genSFI_NIT_res, 'ENTREZID', 'SYMBOL')
+enrich.resultSFI_NIT <- enrichPathway(gene = genes, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
+```
+```{r SignificacionSFI_NIT_Plot_1, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 9: Barplot  SFI vs. NIT"}
+barplot(enrich.resultSFI_NIT, showCategory = 10, font.size = 10)
+```
+```{r SignificacionSFI_NIT_Plot_2, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 10: Red  SFI vs. NIT"}
+cnetplot(enrich.resultSFI_NIT, categorySize = "geneNum", schowCategory = 15, vertex.label.cex = 0.75)
+
+```
+
+### ELI-NIT
+
+```{r SignificacionELI_NIT , include=FALSE}
+# Analisis de enriquecimiento de Pathway
+library(ReactomePA)
+
+ELI_NIT_res2 <- as.data.frame(ELI_NIT_res)
+
+genELI_NIT_res = c(ELI_NIT_res2[ELI_NIT_res2$padj < 0.05 & ELI_NIT_res2$log2FoldChange > 1, "symbol"], ELI_NIT_res2[ELI_NIT_res2$padj < 0.05 & ELI_NIT_res2$log2FoldChange < -1, "symbol"])
+
+genes = mapIds(org.Hs.eg.db, genELI_NIT_res, 'ENTREZID', 'SYMBOL')
+enrich.resultELI_NIT <- enrichPathway(gene = genes, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
+```
+```{r SignificacionELI_NIT_Plot_1, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 11: Barplot  ELI vs. NIT"}
+barplot(enrich.resultELI_NIT, showCategory = 10, font.size = 10)
+```
+```{r SignificacionELI_NIT_Plot_2, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 12: Red  ELI vs. NIT"}
+cnetplot(enrich.resultELI_NIT, categorySize = "geneNum", schowCategory = 15, vertex.label.cex = 0.75)
+
+```
+
+
+
+### ELI-SFI
+
+```{r SignificacionELI_SFI , include=FALSE}
+# Analisis de enriquecimiento de Pathway
+library(ReactomePA)
+
+ELI_SFI_res2 <- as.data.frame(ELI_SFI_res)
+
+genELI_SFI_res = c(ELI_SFI_res2[ELI_SFI_res2$padj < 0.05 & ELI_SFI_res2$log2FoldChange > 1, "symbol"], ELI_SFI_res2[ELI_SFI_res2$padj < 0.05 & ELI_SFI_res2$log2FoldChange < -1, "symbol"])
+
+genes = mapIds(org.Hs.eg.db, genELI_NIT_res, 'ENTREZID', 'SYMBOL')
+enrich.resultELI_SFI <- enrichPathway(gene = genes, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
+```
+```{r SignificacionELI_SFI_Plot_1, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 13: Barplot  ELI vs. SFI"}
+barplot(enrich.resultELI_SFI, showCategory = 10, font.size = 10)
+```
+```{r SignificacionELI_SFI_Plot_2, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 14: Red  ELI vs. SFI"}
+cnetplot(enrich.resultELI_SFI, categorySize = "geneNum", schowCategory = 15, vertex.label.cex = 0.75)
+
+```
+
+# Discusión
+
+A nivel técnico para el análisis de datos del estudio no se consideran limitaciones en ninguno de los procedimientos realizados. 
+Por otro lado, se considera de vital importancia la adecuada comunicación con el investigador para poder realizar filtrajes y normalizaciones adecuadas.
+
+```{r exportacionResultados , include=FALSE}
+# Exportamos resultados
+
+
+pdf(file = "./results/PCA.pdf")
+plotPCA(vsd, intgroup = c("Group"))
+dev.off()
+
+pdf(file = "./results/MDS.pdf")
+ggplot(mds, aes(x = `1`, y = `2`, color = Group)) + geom_point(size = 3) + coord_fixed()
+dev.off()
+
+pdf(file="./results/heatmapClustering.pdf")
+pheatmap(sampleDistMatrix, clustering_distance_rows = sampleDists, clustering_distance_cols = sampleDists, col = colors)
+dev.off()
+
+pdf(file="./results/BoxPlotVSD.pdf")
+boxplot(assay(vsd), border = c(rep("coral2", 10), rep("cyan1", 10), rep("darkolivegreen1", 10)), ylab = "Counts", xlab = "Samples", main = "Processed Data", cex.main = 1.1, cex.lab = 0.9, cex.axis = 0.8, las = 3)
+dev.off()
+
+pdf(file="./results/VolcanoPlotSFI-NIT.pdf")
+plot(SFI_NIT_res2$log2FoldChange, -log10(SFI_NIT_res2$padj), pch=20, main="Volcano plot SFI-NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+with(subset(SFI_NIT_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
+abline(v=0, col="black", lty=3, lwd=1.0)
+abline(v=-2, col="black", lty=4, lwd=2.0)
+abline(v=2, col="black", lty=4, lwd=2.0)
+abline(h=-log10(max(SFI_NIT_res2$pvalue[SFI_NIT_res2$padj<0.05], na.rm=TRUE)), col="black", lty=4, lwd=2.0)
+dev.off()
+
+
+pdf(file="./results/VolcanoPlotELI-NIT.pdf")
+plot(ELI_NIT_res2$log2FoldChange, -log10(ELI_NIT_res2$padj), pch=20, main="Volcano plot ELI-NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+with(subset(ELI_NIT_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
+abline(v=0, col="black", lty=3, lwd=1.0)
+abline(v=-2, col="black", lty=4, lwd=2.0)
+abline(v=2, col="black", lty=4, lwd=2.0)
+abline(h=-log10(max(ELI_NIT_res2$pvalue[ELI_NIT_res2$padj<0.05], na.rm=TRUE)), col="black", lty=4, lwd=2.0)
+dev.off()
+
+pdf(file="./results/VolcanoPlotELI-SFI.pdf")
+plot(ELI_SFI_res2$log2FoldChange, -log10(ELI_SFI_res2$padj), pch=20, main="Volcano plot ELI-SFI", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+with(subset(ELI_SFI_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
+abline(v=0, col="black", lty=3, lwd=1.0)
+abline(v=-2, col="black", lty=4, lwd=2.0)
+abline(v=2, col="black", lty=4, lwd=2.0)
+abline(h=-log10(max(ELI_SFI_res2$pvalue[ELI_SFI_res2$padj<0.05], na.rm=TRUE)), col="black", lty=4, lwd=2.0)
+dev.off()
+
+pdf(file="./results/Gene_Clustering.pdf")
+pheatmap(mat, annotation_col = anno)
+dev.off()
+
+pdf(file="./results/enrichResultSFI_NIT.pdf")
+barplot(enrich.resultSFI_NIT, showCategory = 10, font.size = 10)
+dev.off()
+
+pdf(file="./results/enrichResultELI_NIT.pdf")
+barplot(enrich.resultELI_NIT, showCategory = 10, font.size = 10)
+dev.off()
+
+pdf(file="./results/enrichResultELI_SFI.pdf")
+barplot(enrich.resultELI_SFI, showCategory = 10, font.size = 10)
+dev.off()
+
+
+pdf(file="./results/enrichCNETResultSFI_NIT.pdf")
+cnetplot(enrich.resultSFI_NIT, categorySize = "geneNum", schowCategory = 15, vertex.label.cex = 0.75)
+dev.off()
+
+pdf(file="./results/enricCNEThResultELI_NIT.pdf")
+cnetplot(enrich.resultELI_NIT, categorySize = "geneNum", schowCategory = 15, vertex.label.cex = 0.75)
+dev.off()
+
+pdf(file="./results/enrichCNETResultELI_SFI.pdf")
+cnetplot(enrich.resultELI_SFI, categorySize = "geneNum", schowCategory = 15, vertex.label.cex = 0.75)
+dev.off()
+
+SFI_NIT_resOrdenadoDf <- as.data.frame(SFI_NIT_resOrdenado)
+write.csv(SFI_NIT_resOrdenadoDf, file = "./results/Resultados_SFI_NIT_resOrdenado.csv")
+
+ELI_NIT_resOrdenadoDf <- as.data.frame(ELI_NIT_resOrdenado)
+write.csv(ELI_NIT_resOrdenadoDf, file = "./results/Resultados_ELI_NIT_resOrdenado.csv")
+
+ELI_SFI_resOrdenadoDf <- as.data.frame(ELI_SFI_resOrdenado)
+write.csv(ELI_SFI_resOrdenadoDf, file = "./results/Resultados_ELI_SFI_resOrdenado.csv")
+
+write.csv(enrich.resultSFI_NIT@result, "./results/Enrich_Resultados_SFI_NIT.csv", row.names = FALSE, quote = FALSE)
+
+write.csv(enrich.resultELI_NIT@result, "./results/Enrich_Resultados_ELI_NIT.csv", row.names = FALSE, quote = FALSE)
+
+write.csv(enrich.resultELI_SFI@result, "./results/Enrich_Resultados_ELI_SFI.csv", row.names = FALSE, quote = FALSE)
+
+
+```
+
+# Apéndice: Código
+
+```{r codigo , include=TRUE, eval =FALSE}
+if(!require(DESeq2)) BiocManager::install("DESeq2")
+if(!require(pheatmap)) install.packages("pheatmap", dep=TRUE)
+if(!require(RColorBrewer)) install.packages("RColorBrewer", dep=TRUE)
+if(!require(ggplot2)) install.packages("ggplot2", dep=TRUE)
+if(!require(org.Hs.eg.db)) BiocManager::install("org.Hs.eg.db")
+if(!require(AnnotationDbi)) BiocManager::install("AnnotationDbi")
+
+library(readr)
+library(dplyr)
+
+setwd("~/UOC_ANNA/ADO_PEC2/ADO_PEC2")
+workingDir <-getwd()
+dataDir <-file.path(workingDir, "data")
+resultsDir <- file.path(workingDir, "results")
+
+# se cargan los datos desde los archivos csv
+
+counts = read.csv("./data/counts.csv",header=T,sep = ";")
+target = read.csv("./data/targets.csv",header=T,sep = ",")
+
+# se selecciona 10 muestras aleatorias de cada grupo
+set.seed(1907)
+
+target_NIT <- subset(target, target$Group == "NIT")
+target_SFI <- subset(target, target$Group == "SFI")
+target_ELI <- subset(target, target$Group == "ELI")
+
+
+target_NIT_10 <- dplyr::sample_n(target_NIT, 10, replace = FALSE)
+target_SFI_10 <- dplyr::sample_n(target_SFI, 10)
+target_ELI_10 <- dplyr::sample_n(target_ELI, 10)
+
+target_final = rbind(target_NIT_10, target_SFI_10, target_ELI_10)
+
+target_final$Group <- factor(target_final$Group, levels = c("NIT", "SFI", "ELI"))
+
+# Se modifica el Sample_Name para que cuadre con el formato de counts
+
+target_final$Sample_Name <- gsub("-",".", target_final$Sample_Name)
+
+# Se selecciona las 30 muestras correspondientes del archivo counts
+
+library(dplyr)
+count_final=counts[,c(target_final$Sample_Name)]
+rownames(count_final)=counts$X
+
+
+# A continuación se procede a preparar el objeto DESeqDataSet a partir de la matriz de counts.
+
+dds <- DESeqDataSetFromMatrix(countData = count_final,colData = target_final, design = ~ Group)
+
+# Una vez preparado el objeto DESeqDataSet, se filtran los datos
+
+dds <- dds[rowSums(counts(dds)) > 1, ]
+
+# Se procede a normalizar los datos usando vst
+
+vsd <- vst(dds, blind = FALSE)
+
+# Se procede a mostrar los datos normalizados en un boxplot
+
+boxplot(assay(vsd), border = c(rep("coral2", 10), rep("cyan1", 10), rep("darkolivegreen1", 10)), ylab = "Counts", xlab = "Samples", main = "Processed Data", cex.main = 1.1, cex.lab = 0.9, cex.axis = 0.8, las = 3)
+
+
+# Se procede a calcular la distancia entre muestras y se representa esta con un gráfico heatmap
+
+sampleDists <- dist(t(assay(vsd)))
+library("pheatmap")
+library("RColorBrewer")
+sampleDistMatrix <- as.matrix( sampleDists )
+rownames(sampleDistMatrix) <- paste(vsd$ShortName)
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows = sampleDists,
+         clustering_distance_cols = sampleDists,
+         col = colors)
+
+
+# Se representa visualmente el agrupamiento de muestras
+plotPCA(vsd, intgroup = c("Group"))
+
+# Analisis MDS
+
+mds <- as.data.frame(colData(vsd))  %>%
+         cbind(cmdscale(sampleDistMatrix))
+ggplot(mds, aes(x = `1`, y = `2`, color = Group)) +
+  geom_point(size = 3) + coord_fixed()
+  
+
+# Cluster de la muestra de los genes mas variables. Selección de los 20 genes con la mas alta variabilidad.
+
+library("genefilter")
+topVarGenes <- head(order(rowVars(assay(vsd)), decreasing = TRUE), 20)
+
+mat  <- assay(vsd)[topVarGenes, ]
+mat  <- mat - rowMeans(mat)
+anno <- as.data.frame(colData(vsd)[, "Group"])
+rownames(anno) <- rownames(colData(vsd))
+colnames(anno) <- "Group"
+pheatmap(mat, annotation_col = anno)
+
+
+# identificacion de genes diferencialmente expresados
+dds <- DESeq(dds, parallel =TRUE)
+
+
+# comparación SFI vs NIT 
+
+SFI_NIT_res <- results(dds, contrast=c("Group","SFI","NIT"), alpha = 0.05)
+SFI_NIT_res
+
+summary(SFI_NIT_res)
+
+table(SFI_NIT_res$padj < 0.05)
+
+SFI_NIT_resSig <- subset(SFI_NIT_res, padj < 0.1)
+head(SFI_NIT_resSig[ order(SFI_NIT_resSig$log2FoldChange), ])
+
+
+# comparación ELI vs NIT 
+
+
+ELI_NIT_res <- results(dds, contrast=c("Group","ELI","NIT"), alpha = 0.05)
+ELI_NIT_res
+
+summary(ELI_NIT_res)
+
+table(ELI_NIT_res$padj < 0.05)
+
+ELI_NIT_resSig <- subset(ELI_NIT_res, padj < 0.1)
+head(ELI_NIT_resSig[ order(ELI_NIT_resSig$log2FoldChange), ])
+
+
+# comparación  ELI vs SFI
+
+ELI_SFI_res <- results(dds, contrast=c("Group","ELI","SFI"), alpha = 0.05)
+ELI_SFI_res
+summary(ELI_SFI_res)
+
+table(ELI_SFI_res$padj < 0.05)
+
+ELI_SFI_resSig <- subset(ELI_SFI_res, padj < 0.1)
+head(ELI_SFI_resSig[ order(ELI_SFI_resSig$log2FoldChange), ])
+
+
+# Volcano plot SFI-NIT
+
+SFI_NIT_res2 <- as.data.frame(SFI_NIT_res)
+
+plot(SFI_NIT_res2$log2FoldChange, -log10(SFI_NIT_res2$padj), pch=20, main="Volcano plot SFI-NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+with(subset(SFI_NIT_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
+abline(v=0, col="black", lty=3, lwd=1.0)
+abline(v=-2, col="black", lty=4, lwd=2.0)
+abline(v=2, col="black", lty=4, lwd=2.0)
+abline(h=-log10(max(SFI_NIT_res2$pvalue[SFI_NIT_res2$padj<0.05], na.rm=TRUE)), col="black", lty=4, lwd=2.0)
+
+# Volcano plot ELI-NIT
+ELI_NIT_res2 <- as.data.frame(ELI_NIT_res)
+
+plot(ELI_NIT_res2$log2FoldChange, -log10(ELI_NIT_res2$padj), pch=20, main="Volcano plot ELI-NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+with(subset(ELI_NIT_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
+abline(v=0, col="black", lty=3, lwd=1.0)
+abline(v=-2, col="black", lty=4, lwd=2.0)
+abline(v=2, col="black", lty=4, lwd=2.0)
+abline(h=-log10(max(ELI_NIT_res2$pvalue[ELI_NIT_res2$padj<0.05], na.rm=TRUE)), col="black", lty=4, lwd=2.0)
+
+# Volcano plot ELI-SFI
+ELI_SFI_res2 <- as.data.frame(ELI_SFI_res)
+
+plot(ELI_SFI_res2$log2FoldChange, -log10(ELI_SFI_res2$padj), pch=20, main="Volcano plot ELI-SFI", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+with(subset(ELI_SFI_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
+abline(v=0, col="black", lty=3, lwd=1.0)
+abline(v=-2, col="black", lty=4, lwd=2.0)
+abline(v=2, col="black", lty=4, lwd=2.0)
+abline(h=-log10(max(ELI_SFI_res2$pvalue[ELI_SFI_res2$padj<0.05], na.rm=TRUE)), col="black", lty=4, lwd=2.0)
+
+
+# Anotación de los resultados con ENSEMBL
+
+# SFI-NIT
+# normalizamos los nombres de las filas para poder cuadrarlos 
+rownames(SFI_NIT_res)<- gsub("\\..*","", rownames(SFI_NIT_res))
+
+library("AnnotationDbi")
+SFI_NIT_res$symbol <- mapIds(org.Hs.eg.db,
+                           keys = rownames(SFI_NIT_res),
+                           column = "SYMBOL",
+                           keytype = "ENSEMBL",
+                           multiVals="first")
+SFI_NIT_res$entrez  <- mapIds(org.Hs.eg.db,
+                           keys = rownames(SFI_NIT_res),
+                           column = "ENTREZID",
+                           keytype = "ENSEMBL",
+                           multiVals="first")
+SFI_NIT_resOrdenado <- SFI_NIT_res[order(SFI_NIT_res$pvalue),]
+
+head(SFI_NIT_resOrdenado)
+
+
+# ELI-NIT
+
+# normalizamos los nombres de las filas para poder cuadrarlos 
+rownames(ELI_NIT_res)<- gsub("\\..*","", rownames(ELI_NIT_res))
+
+library("AnnotationDbi")
+ELI_NIT_res$symbol <- mapIds(org.Hs.eg.db,
+                           keys = rownames(ELI_NIT_res),
+                           column = "SYMBOL",
+                           keytype = "ENSEMBL",
+                           multiVals="first")
+ELI_NIT_res$entrez  <- mapIds(org.Hs.eg.db,
+                           keys = rownames(ELI_NIT_res),
+                           column = "ENTREZID",
+                           keytype = "ENSEMBL",
+                           multiVals="first")
+ELI_NIT_resOrdenado <- ELI_NIT_res[order(ELI_NIT_res$pvalue),]
+
+head(ELI_NIT_resOrdenado)
+
+
+# ELI-SFI
+
+# normalizamos los nombres de las filas para poder cuadrarlos 
+rownames(ELI_SFI_res)<- gsub("\\..*","", rownames(ELI_SFI_res))
+
+library("AnnotationDbi")
+ELI_SFI_res$symbol <- mapIds(org.Hs.eg.db,
+                           keys = rownames(ELI_SFI_res),
+                           column = "SYMBOL",
+                           keytype = "ENSEMBL",
+                           multiVals="first")
+ELI_SFI_res$entrez  <- mapIds(org.Hs.eg.db,
+                           keys = rownames(ELI_SFI_res),
+                           column = "ENTREZID",
+                           keytype = "ENSEMBL",
+                           multiVals="first")
+ELI_SFI_resOrdenado <- ELI_NIT_res[order(ELI_SFI_res$pvalue),]
+
+head(ELI_SFI_resOrdenado)
+
+# Análisis de significación Biológica
+
+mapped_genes2GO <- mappedkeys(org.Hs.egGO)
+mapped_genes2KEGG <- mappedkeys(org.Hs.egPATH)
+mapped_genes <- union(mapped_genes2GO , mapped_genes2KEGG)
+universe = mapped_genes
+
+# Analisis de enriquecimiento de Pathway usando ReactomePA
+# SFI-NIT
+
+library(ReactomePA)
+
+SFI_NIT_res2 <- as.data.frame(SFI_NIT_res)
+
+genSFI_NIT_res = c(SFI_NIT_res2[SFI_NIT_res2$padj < 0.05 & SFI_NIT_res2$log2FoldChange > 1, "symbol"], SFI_NIT_res2[SFI_NIT_res2$padj < 0.05 & SFI_NIT_res2$log2FoldChange < -1, "symbol"])
+
+genes = mapIds(org.Hs.eg.db, genSFI_NIT_res, 'ENTREZID', 'SYMBOL')
+enrich.resultSFI_NIT <- enrichPathway(gene = genes, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
+
+barplot(enrich.resultSFI_NIT, showCategory = 10, font.size = 10)
+
+cnetplot(enrich.resultSFI_NIT, categorySize = "geneNum", schowCategory = 15, vertex.label.cex = 0.75)
+
+
+# ELI-NIT
+
+library(ReactomePA)
+
+ELI_NIT_res2 <- as.data.frame(ELI_NIT_res)
+
+genELI_NIT_res = c(ELI_NIT_res2[ELI_NIT_res2$padj < 0.05 & ELI_NIT_res2$log2FoldChange > 1, "symbol"], ELI_NIT_res2[ELI_NIT_res2$padj < 0.05 & ELI_NIT_res2$log2FoldChange < -1, "symbol"])
+
+genes = mapIds(org.Hs.eg.db, genELI_NIT_res, 'ENTREZID', 'SYMBOL')
+enrich.resultELI_NIT <- enrichPathway(gene = genes, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
+
+barplot(enrich.resultELI_NIT, showCategory = 10, font.size = 10)
+
+cnetplot(enrich.resultELI_NIT, categorySize = "geneNum", schowCategory = 15, vertex.label.cex = 0.75)
+
+
+# ELI-SFI
+
+library(ReactomePA)
+
+ELI_SFI_res2 <- as.data.frame(ELI_SFI_res)
+
+genELI_SFI_res = c(ELI_SFI_res2[ELI_SFI_res2$padj < 0.05 & ELI_SFI_res2$log2FoldChange > 1, "symbol"], ELI_SFI_res2[ELI_SFI_res2$padj < 0.05 & ELI_SFI_res2$log2FoldChange < -1, "symbol"])
+
+genes = mapIds(org.Hs.eg.db, genELI_NIT_res, 'ENTREZID', 'SYMBOL')
+enrich.resultELI_SFI <- enrichPathway(gene = genes, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
+
+barplot(enrich.resultELI_SFI, showCategory = 10, font.size = 10)
+
+cnetplot(enrich.resultELI_SFI, categorySize = "geneNum", schowCategory = 15, vertex.label.cex = 0.75)
+
+
+# Exportamos resultados
+
+
+pdf(file = "./results/PCA.pdf")
+plotPCA(vsd, intgroup = c("Group"))
+dev.off()
+
+pdf(file = "./results/MDS.pdf")
+ggplot(mds, aes(x = `1`, y = `2`, color = Group)) + geom_point(size = 3) + coord_fixed()
+dev.off()
+
+pdf(file="./results/heatmapClustering.pdf")
+pheatmap(sampleDistMatrix, clustering_distance_rows = sampleDists, clustering_distance_cols = sampleDists, col = colors)
+dev.off()
+
+pdf(file="./results/BoxPlotVSD.pdf")
+boxplot(assay(vsd), border = c(rep("coral2", 10), rep("cyan1", 10), rep("darkolivegreen1", 10)), ylab = "Counts", xlab = "Samples", main = "Processed Data", cex.main = 1.1, cex.lab = 0.9, cex.axis = 0.8, las = 3)
+dev.off()
+
+pdf(file="./results/VolcanoPlotSFI-NIT.pdf")
+plot(SFI_NIT_res2$log2FoldChange, -log10(SFI_NIT_res2$padj), pch=20, main="Volcano plot SFI-NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+with(subset(SFI_NIT_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
+abline(v=0, col="black", lty=3, lwd=1.0)
+abline(v=-2, col="black", lty=4, lwd=2.0)
+abline(v=2, col="black", lty=4, lwd=2.0)
+abline(h=-log10(max(SFI_NIT_res2$pvalue[SFI_NIT_res2$padj<0.05], na.rm=TRUE)), col="black", lty=4, lwd=2.0)
+dev.off()
+
+
+pdf(file="./results/VolcanoPlotELI-NIT.pdf")
+plot(ELI_NIT_res2$log2FoldChange, -log10(ELI_NIT_res2$padj), pch=20, main="Volcano plot ELI-NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+with(subset(ELI_NIT_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
+abline(v=0, col="black", lty=3, lwd=1.0)
+abline(v=-2, col="black", lty=4, lwd=2.0)
+abline(v=2, col="black", lty=4, lwd=2.0)
+abline(h=-log10(max(ELI_NIT_res2$pvalue[ELI_NIT_res2$padj<0.05], na.rm=TRUE)), col="black", lty=4, lwd=2.0)
+dev.off()
+
+pdf(file="./results/VolcanoPlotELI-SFI.pdf")
+plot(ELI_SFI_res2$log2FoldChange, -log10(ELI_SFI_res2$padj), pch=20, main="Volcano plot ELI-SFI", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+with(subset(ELI_SFI_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
+abline(v=0, col="black", lty=3, lwd=1.0)
+abline(v=-2, col="black", lty=4, lwd=2.0)
+abline(v=2, col="black", lty=4, lwd=2.0)
+abline(h=-log10(max(ELI_SFI_res2$pvalue[ELI_SFI_res2$padj<0.05], na.rm=TRUE)), col="black", lty=4, lwd=2.0)
+dev.off()
+
+pdf(file="./results/Gene_Clustering.pdf")
+pheatmap(mat, annotation_col = anno)
+dev.off()
+
+pdf(file="./results/enrichResultSFI_NIT.pdf")
+barplot(enrich.resultSFI_NIT, showCategory = 10, font.size = 10)
+dev.off()
+
+pdf(file="./results/enrichResultELI_NIT.pdf")
+barplot(enrich.resultELI_NIT, showCategory = 10, font.size = 10)
+dev.off()
+
+pdf(file="./results/enrichResultELI_SFI.pdf")
+barplot(enrich.resultELI_SFI, showCategory = 10, font.size = 10)
+dev.off()
+
+
+pdf(file="./results/enrichCNETResultSFI_NIT.pdf")
+cnetplot(enrich.resultSFI_NIT, categorySize = "geneNum", schowCategory = 15, vertex.label.cex = 0.75)
+dev.off()
+
+pdf(file="./results/enricCNEThResultELI_NIT.pdf")
+cnetplot(enrich.resultELI_NIT, categorySize = "geneNum", schowCategory = 15, vertex.label.cex = 0.75)
+dev.off()
+
+pdf(file="./results/enrichCNETResultELI_SFI.pdf")
+cnetplot(enrich.resultELI_SFI, categorySize = "geneNum", schowCategory = 15, vertex.label.cex = 0.75)
+dev.off()
+
+SFI_NIT_resOrdenadoDf <- as.data.frame(SFI_NIT_resOrdenado)
+write.csv(SFI_NIT_resOrdenadoDf, file = "./results/Resultados_SFI_NIT_resOrdenado.csv")
+
+ELI_NIT_resOrdenadoDf <- as.data.frame(ELI_NIT_resOrdenado)
+write.csv(ELI_NIT_resOrdenadoDf, file = "./results/Resultados_ELI_NIT_resOrdenado.csv")
+
+ELI_SFI_resOrdenadoDf <- as.data.frame(ELI_SFI_resOrdenado)
+write.csv(ELI_SFI_resOrdenadoDf, file = "./results/Resultados_ELI_SFI_resOrdenado.csv")
+
+write.csv(enrich.resultSFI_NIT@result, "./results/Enrich_Resultados_SFI_NIT.csv", row.names = FALSE, quote = FALSE)
+
+write.csv(enrich.resultELI_NIT@result, "./results/Enrich_Resultados_ELI_NIT.csv", row.names = FALSE, quote = FALSE)
+
+write.csv(enrich.resultELI_SFI@result, "./results/Enrich_Resultados_ELI_SFI.csv", row.names = FALSE, quote = FALSE)
+
+
+```
