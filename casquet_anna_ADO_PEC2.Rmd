@@ -81,7 +81,7 @@ Para la documentación se ha utilizado Rmarkdown.
 
 #### Carga de datos y extraccion de muestras aleatorias
 
-Se ha usado el comando read para leer los dos archivos csv con los datos originales.
+Se usa el comando read para leer los dos archivos csv con los datos originales.
 
 ```{r load_data, include=TRUE}
 
@@ -90,9 +90,9 @@ target = read.csv("./data/targets.csv",header=T,sep = ",")
 
 ```
 
-Se ha procedido a seleccionar de forma aleatoria 10 muestras de cada grupo con el comando subset y sample_n.
+Se  procede a seleccionar de forma aleatoria 10 muestras de cada grupo con el comando subset y sample_n.
 
-A continuación se han unido todos los datos en la variable target_final y se ha procedido a factorizar según el grupo.
+A continuación se unen todos los datos en la variable target_final y se factorizan según el grupo.
 
 ```{r seleccionMuestras, include=TRUE}
 
@@ -116,7 +116,7 @@ target_final$Group <- factor(target_final$Group, levels = c("NIT", "SFI", "ELI")
 
 ```
 
-Se procede a modificar el nombre de la muestra en target_final para que sea concordante con counts y se procede a seleccionar las 30 muestras en counts.
+Se procede a modificar el nombre de la muestra en target_final para que sea concordante con counts y a seleccionar las 30 muestras en counts.
 
 ```{r preprocesadoMuestras, include=TRUE}
 
@@ -134,7 +134,7 @@ rownames(count_final)=counts$X
 ```
 #### Preparación objeto DeSeqDataSet
 
-A continuación se procede a preparar el objeto DESeqDataSet a partir de la matriz de counts.
+A continuación se prepara el objeto DESeqDataSet a partir de la matriz de counts.
 
 ```{r prepDESeqDataSet, message=FALSE, echo=FALSE, warning=FALSE, include=TRUE}
 dds <- DESeqDataSetFromMatrix(countData = count_final,colData = target_final, design = ~ Group)
@@ -151,7 +151,7 @@ nrow(dds)
 ```
 #### Normalización
 
-Se procede a normalizar los datos usando vst, así se obtienen datos con homocedasticidad y se muestra un boxplot con los resultados.
+Se normalizan los datos usando vst, así se obtienen datos con homocedasticidad y se muestra un boxplot con los resultados.
 
 ```{r vst, include=TRUE}
 vsd <- vst(dds, blind = FALSE)
@@ -166,7 +166,7 @@ boxplot(assay(vsd), border = c(rep("coral2", 10), rep("cyan1", 10), rep("darkoli
 
 #### Distancia entre muestras
 
-Se procede a calcular la distancia entre muestras y se representa esta con un gráfico heatmap. Se puede observar un mayor agrupamiento en el grupo ELI
+Se calcular la distancia entre muestras y se representa esta con un gráfico heatmap. Se puede observar un mayor agrupamiento en el grupo ELI
 
 
 ```{r distancia, include=TRUE ,fig.cap="Fig. 2: Heatmap."}
@@ -186,7 +186,7 @@ pheatmap(sampleDistMatrix,
 
 #### Análisis de componentes principales
 
-Los colores representan los diferentes grupos y se representa visualmente el agrupamiento de muestras.
+Se muestra un gráfico PCA. Los colores representan los diferentes grupos y se representa visualmente el agrupamiento de muestras.
 
 ```{r pca, include=TRUE,fig.cap="Fig. 3: Análisis de componentes principales."}
 plotPCA(vsd, intgroup = c("Group"))
@@ -194,7 +194,7 @@ plotPCA(vsd, intgroup = c("Group"))
 
 #### Multidimensional Scaling
 
-Este gráfico muestra el análisis MDS.
+A continuación se muestra en un gráfico el análisis MDS.
 
 ```{r mds, include=TRUE ,fig.cap="Fig. 4: Multidimensional Scaling."}
 mds <- as.data.frame(colData(vsd))  %>%
@@ -292,9 +292,11 @@ head(ELI_SFI_resSig[ order(ELI_SFI_resSig$log2FoldChange), ])
 ```
 ### Volcano Plots
 
+Se puede ver que tanto ELI vs NIT como ELI vs SFI presentan muchos genes sobreexpresados y infraexpresados. En cambio en SFI vs NIT presentan una cantidad muy menor. Parece indicar que hay poca diferencia entre los tejidos SFI y NIT, puesto que no hay mucha variación en los genes diferencialmente expresados. 
+
 Volcano plot SFI vs NIT
 
-```{r volcano1, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 6: Volcano plot  SFI vs NIT"}
+```{r volcano1, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 6: Volcano plot SFI vs NIT"}
 SFI_NIT_res2 <- as.data.frame(SFI_NIT_res)
 
 plot(SFI_NIT_res2$log2FoldChange, -log10(SFI_NIT_res2$padj), pch=20, main="Volcano plot SFI vs NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
@@ -307,7 +309,7 @@ abline(h=-log10(max(SFI_NIT_res2$pvalue[SFI_NIT_res2$padj<0.05], na.rm=TRUE)), c
 ```
 
 Volcano plot ELI vs NIT
-```{r volcano2, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 7: Volcano plot  ELI vs NIT"}
+```{r volcano2, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 7: Volcano plot ELI vs NIT"}
 ELI_NIT_res2 <- as.data.frame(ELI_NIT_res)
 
 plot(ELI_NIT_res2$log2FoldChange, -log10(ELI_NIT_res2$padj), pch=20, main="Volcano plot ELI vs NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
@@ -320,7 +322,7 @@ abline(h=-log10(max(ELI_NIT_res2$pvalue[ELI_NIT_res2$padj<0.05], na.rm=TRUE)), c
 ```
 
 Volcano plot ELI vs SFI
-```{r volcano3, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 8: Volcano plot  ELI vs SFI"}
+```{r volcano3, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 8: Volcano plot ELI vs SFI"}
 ELI_SFI_res2 <- as.data.frame(ELI_SFI_res)
 
 plot(ELI_SFI_res2$log2FoldChange, -log10(ELI_SFI_res2$padj), pch=20, main="Volcano plot ELI vs SFI", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
@@ -587,6 +589,13 @@ write.csv(enrich.resultELI_SFI@result, "./results/Enrich_Resultados_ELI_SFI.csv"
 
 
 ```
+# Referencias
+
++ Biostars - Bioinformatics explained comunity. https://www.biostars.org https://www.biostars.org/p/282295/
++ Bioconductor.org. Course Materials: End-to-end RNA-Seq workflow  https://www.bioconductor.org/help/course-materials/2015/CSAMA2015/lab/rnaseqCSAMA.html
++ Tian Zheng - Ph.D., Columbia University 2002 http://www.stat.columbia.edu/~tzheng/
++ Diego Calvo - https://www.diegocalvo.es/
+
 
 # Apéndice: Código
 
