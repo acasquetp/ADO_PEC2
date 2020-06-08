@@ -233,7 +233,7 @@ dds <- DESeq(dds, parallel =TRUE)
 
 ```
 
-### SFI-NIT
+### SFI vs NIT
 
 En la comparación SFI vs NIT encontramos 271 genes sobreexpresados y 311 infraexpresados. 
 
@@ -253,7 +253,7 @@ head(SFI_NIT_resSig[ order(SFI_NIT_resSig$log2FoldChange), ])
 
 ```
 
-### ELI-NIT 
+### ELI vs NIT 
 
 En la comparación ELI vs NIT encontramos 5124 genes sobreexpresados y 3541 infraexpresados. 
 
@@ -272,7 +272,7 @@ head(ELI_NIT_resSig[ order(ELI_NIT_resSig$log2FoldChange), ])
 
 ```
 
-### ELI-SFI
+### ELI vs SFI
 
 En la comparación ELI vs SFI encontramos 3737 genes sobreexpresados y 2203 infraexpresados. 
 
@@ -292,12 +292,12 @@ head(ELI_SFI_resSig[ order(ELI_SFI_resSig$log2FoldChange), ])
 ```
 ### Volcano Plots
 
-Volcano plot SFI-NIT
+Volcano plot SFI vs NIT
 
-```{r volcano1, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 6: Volcano plot  SFI vs. NIT"}
+```{r volcano1, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 6: Volcano plot  SFI vs NIT"}
 SFI_NIT_res2 <- as.data.frame(SFI_NIT_res)
 
-plot(SFI_NIT_res2$log2FoldChange, -log10(SFI_NIT_res2$padj), pch=20, main="Volcano plot SFI-NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+plot(SFI_NIT_res2$log2FoldChange, -log10(SFI_NIT_res2$padj), pch=20, main="Volcano plot SFI vs NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
 with(subset(SFI_NIT_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
 abline(v=0, col="black", lty=3, lwd=1.0)
 abline(v=-2, col="black", lty=4, lwd=2.0)
@@ -306,11 +306,11 @@ abline(h=-log10(max(SFI_NIT_res2$pvalue[SFI_NIT_res2$padj<0.05], na.rm=TRUE)), c
 
 ```
 
-Volcano plot ELI-NIT
-```{r volcano2, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 7: Volcano plot  ELI vs. NIT"}
+Volcano plot ELI vs NIT
+```{r volcano2, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 7: Volcano plot  ELI vs NIT"}
 ELI_NIT_res2 <- as.data.frame(ELI_NIT_res)
 
-plot(ELI_NIT_res2$log2FoldChange, -log10(ELI_NIT_res2$padj), pch=20, main="Volcano plot ELI-NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+plot(ELI_NIT_res2$log2FoldChange, -log10(ELI_NIT_res2$padj), pch=20, main="Volcano plot ELI vs NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
 with(subset(ELI_NIT_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
 abline(v=0, col="black", lty=3, lwd=1.0)
 abline(v=-2, col="black", lty=4, lwd=2.0)
@@ -319,11 +319,11 @@ abline(h=-log10(max(ELI_NIT_res2$pvalue[ELI_NIT_res2$padj<0.05], na.rm=TRUE)), c
 
 ```
 
-Volcano plot ELI-SFI
-```{r volcano3, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 8: Volcano plot  ELI vs. SFI"}
+Volcano plot ELI vs SFI
+```{r volcano3, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 8: Volcano plot  ELI vs SFI"}
 ELI_SFI_res2 <- as.data.frame(ELI_SFI_res)
 
-plot(ELI_SFI_res2$log2FoldChange, -log10(ELI_SFI_res2$padj), pch=20, main="Volcano plot ELI-SFI", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+plot(ELI_SFI_res2$log2FoldChange, -log10(ELI_SFI_res2$padj), pch=20, main="Volcano plot ELI vs SFI", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
 with(subset(ELI_SFI_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
 abline(v=0, col="black", lty=3, lwd=1.0)
 abline(v=-2, col="black", lty=4, lwd=2.0)
@@ -336,7 +336,7 @@ abline(h=-log10(max(ELI_SFI_res2$pvalue[ELI_SFI_res2$padj<0.05], na.rm=TRUE)), c
 
 Para que se puedan interpretar mejor los resultados se procede a la anotación con ENSEMBL de estos. 
 
-### SFI-NIT
+### SFI vs NIT
 
 ```{r AnotacionSFIvsNIT , include=FALSE }
 # normalizamos los nombres de las filas para poder cuadrarlos 
@@ -360,7 +360,7 @@ head(SFI_NIT_resOrdenado)
 
 ```
 
-### ELI-NIT
+### ELI vs NIT
 
 ```{r AnotacionELIvsNIT , include=FALSE}
 # normalizamos los nombres de las filas para poder cuadrarlos 
@@ -384,7 +384,7 @@ head(ELI_NIT_resOrdenado)
 
 ```
 
-### ELI-SFI
+### ELI vs SFI
 
 ```{r AnotacionELIIvsNIT , include=FALSE}
 # normalizamos los nombres de las filas para poder cuadrarlos 
@@ -410,16 +410,20 @@ head(ELI_SFI_resOrdenado)
 ## Análisis de significación Biológica
 
 ```{r mapped_Genes , include=TRUE}
-mapped_genes2GO <- mappedkeys(org.Hs.egGO)
-mapped_genes2KEGG <- mappedkeys(org.Hs.egPATH)
-mapped_genes <- union(mapped_genes2GO , mapped_genes2KEGG)
-universe = mapped_genes
+
+## Bimap interface:
+x <- org.Hs.egGO
+mapped_genes2GO <- mappedkeys(x)
+y <- org.Hs.egPATH
+mapped_genes2KEGG <- mappedkeys(y)
+universe <- union(mapped_genes2GO , mapped_genes2KEGG)
+
 ```
 Se ha usado el paquete Reactome para realizar los analisis de Gene Enrichment seleccionando aquellos genes con un p-valor menor a 0.05.
 Se procede a realizar dos gráficos por compararción. El primero, un barplot con las 10 vías celulares más significativamente enriquecidas
 Un segundo, un cnetplot con la red de las vías y los genes relacionados.
 
-### SFI-NIT
+### SFI vs NIT
 
 ```{r SignificacionSFI_NIT , include=FALSE}
 # Analisis de enriquecimiento de Pathway
@@ -429,18 +433,18 @@ SFI_NIT_res2 <- as.data.frame(SFI_NIT_res)
 
 genSFI_NIT_res = c(SFI_NIT_res2[SFI_NIT_res2$padj < 0.05 & SFI_NIT_res2$log2FoldChange > 1, "symbol"], SFI_NIT_res2[SFI_NIT_res2$padj < 0.05 & SFI_NIT_res2$log2FoldChange < -1, "symbol"])
 
-genes = mapIds(org.Hs.eg.db, genSFI_NIT_res, 'ENTREZID', 'SYMBOL')
-enrich.resultSFI_NIT <- enrichPathway(gene = genes, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
+selectedIDs = mapIds(org.Hs.eg.db, genSFI_NIT_res, 'ENTREZID', 'SYMBOL')
+enrich.resultSFI_NIT <- enrichPathway(selectedIDs, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
 ```
-```{r SignificacionSFI_NIT_Plot_1, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 9: Barplot  SFI vs. NIT"}
+```{r SignificacionSFI_NIT_Plot_1, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 9: Barplot SFI v NIT"}
 barplot(enrich.resultSFI_NIT, showCategory = 10, font.size = 10)
 ```
-```{r SignificacionSFI_NIT_Plot_2, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 10: Red  SFI vs. NIT"}
+```{r SignificacionSFI_NIT_Plot_2, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 10: Red SFI vs NIT"}
 cnetplot(enrich.resultSFI_NIT, categorySize = "geneNum", schowCategory = 15, vertex.label.cex = 0.75)
 
 ```
 
-### ELI-NIT
+### ELI vs NIT
 
 ```{r SignificacionELI_NIT , include=FALSE}
 # Analisis de enriquecimiento de Pathway
@@ -450,20 +454,20 @@ ELI_NIT_res2 <- as.data.frame(ELI_NIT_res)
 
 genELI_NIT_res = c(ELI_NIT_res2[ELI_NIT_res2$padj < 0.05 & ELI_NIT_res2$log2FoldChange > 1, "symbol"], ELI_NIT_res2[ELI_NIT_res2$padj < 0.05 & ELI_NIT_res2$log2FoldChange < -1, "symbol"])
 
-genes = mapIds(org.Hs.eg.db, genELI_NIT_res, 'ENTREZID', 'SYMBOL')
-enrich.resultELI_NIT <- enrichPathway(gene = genes, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
+selectedIDs = mapIds(org.Hs.eg.db, genELI_NIT_res, 'ENTREZID', 'SYMBOL')
+enrich.resultELI_NIT <- enrichPathway(selectedIDs, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
 ```
-```{r SignificacionELI_NIT_Plot_1, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 11: Barplot  ELI vs. NIT"}
+```{r SignificacionELI_NIT_Plot_1, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 11: Barplot ELI vs NIT"}
 barplot(enrich.resultELI_NIT, showCategory = 10, font.size = 10)
 ```
-```{r SignificacionELI_NIT_Plot_2, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 12: Red  ELI vs. NIT"}
+```{r SignificacionELI_NIT_Plot_2, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 12: Red ELI vs NIT"}
 cnetplot(enrich.resultELI_NIT, categorySize = "geneNum", schowCategory = 15, vertex.label.cex = 0.75)
 
 ```
 
 
 
-### ELI-SFI
+### ELI vs SFI
 
 ```{r SignificacionELI_SFI , include=FALSE}
 # Analisis de enriquecimiento de Pathway
@@ -473,13 +477,13 @@ ELI_SFI_res2 <- as.data.frame(ELI_SFI_res)
 
 genELI_SFI_res = c(ELI_SFI_res2[ELI_SFI_res2$padj < 0.05 & ELI_SFI_res2$log2FoldChange > 1, "symbol"], ELI_SFI_res2[ELI_SFI_res2$padj < 0.05 & ELI_SFI_res2$log2FoldChange < -1, "symbol"])
 
-genes = mapIds(org.Hs.eg.db, genELI_NIT_res, 'ENTREZID', 'SYMBOL')
-enrich.resultELI_SFI <- enrichPathway(gene = genes, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
+selectedIDs = mapIds(org.Hs.eg.db, genELI_NIT_res, 'ENTREZID', 'SYMBOL')
+enrich.resultELI_SFI <- enrichPathway(selectedIDs, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
 ```
-```{r SignificacionELI_SFI_Plot_1, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 13: Barplot  ELI vs. SFI"}
+```{r SignificacionELI_SFI_Plot_1, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 13: Barplot ELI vs SFI"}
 barplot(enrich.resultELI_SFI, showCategory = 10, font.size = 10)
 ```
-```{r SignificacionELI_SFI_Plot_2, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 14: Red  ELI vs. SFI"}
+```{r SignificacionELI_SFI_Plot_2, message=FALSE, echo=FALSE, warning=FALSE,fig.cap="Fig. 14: Red ELI vs SFI"}
 cnetplot(enrich.resultELI_SFI, categorySize = "geneNum", schowCategory = 15, vertex.label.cex = 0.75)
 
 ```
@@ -737,7 +741,7 @@ head(ELI_SFI_resSig[ order(ELI_SFI_resSig$log2FoldChange), ])
 
 SFI_NIT_res2 <- as.data.frame(SFI_NIT_res)
 
-plot(SFI_NIT_res2$log2FoldChange, -log10(SFI_NIT_res2$padj), pch=20, main="Volcano plot SFI-NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+plot(SFI_NIT_res2$log2FoldChange, -log10(SFI_NIT_res2$padj), pch=20, main="Volcano plot SFI vs NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
 with(subset(SFI_NIT_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
 abline(v=0, col="black", lty=3, lwd=1.0)
 abline(v=-2, col="black", lty=4, lwd=2.0)
@@ -747,7 +751,7 @@ abline(h=-log10(max(SFI_NIT_res2$pvalue[SFI_NIT_res2$padj<0.05], na.rm=TRUE)), c
 # Volcano plot ELI-NIT
 ELI_NIT_res2 <- as.data.frame(ELI_NIT_res)
 
-plot(ELI_NIT_res2$log2FoldChange, -log10(ELI_NIT_res2$padj), pch=20, main="Volcano plot ELI-NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+plot(ELI_NIT_res2$log2FoldChange, -log10(ELI_NIT_res2$padj), pch=20, main="Volcano plot ELI vs NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
 with(subset(ELI_NIT_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
 abline(v=0, col="black", lty=3, lwd=1.0)
 abline(v=-2, col="black", lty=4, lwd=2.0)
@@ -757,7 +761,7 @@ abline(h=-log10(max(ELI_NIT_res2$pvalue[ELI_NIT_res2$padj<0.05], na.rm=TRUE)), c
 # Volcano plot ELI-SFI
 ELI_SFI_res2 <- as.data.frame(ELI_SFI_res)
 
-plot(ELI_SFI_res2$log2FoldChange, -log10(ELI_SFI_res2$padj), pch=20, main="Volcano plot ELI-SFI", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+plot(ELI_SFI_res2$log2FoldChange, -log10(ELI_SFI_res2$padj), pch=20, main="Volcano plot ELI vs SFI", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
 with(subset(ELI_SFI_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
 abline(v=0, col="black", lty=3, lwd=1.0)
 abline(v=-2, col="black", lty=4, lwd=2.0)
@@ -830,10 +834,13 @@ head(ELI_SFI_resOrdenado)
 
 # Análisis de significación Biológica
 
-mapped_genes2GO <- mappedkeys(org.Hs.egGO)
-mapped_genes2KEGG <- mappedkeys(org.Hs.egPATH)
-mapped_genes <- union(mapped_genes2GO , mapped_genes2KEGG)
-universe = mapped_genes
+## Bimap interface:
+x <- org.Hs.egGO
+mapped_genes2GO <- mappedkeys(x)
+y <- org.Hs.egPATH
+mapped_genes2KEGG <- mappedkeys(y)
+universe <- union(mapped_genes2GO , mapped_genes2KEGG)
+
 
 # Analisis de enriquecimiento de Pathway usando ReactomePA
 # SFI-NIT
@@ -844,8 +851,8 @@ SFI_NIT_res2 <- as.data.frame(SFI_NIT_res)
 
 genSFI_NIT_res = c(SFI_NIT_res2[SFI_NIT_res2$padj < 0.05 & SFI_NIT_res2$log2FoldChange > 1, "symbol"], SFI_NIT_res2[SFI_NIT_res2$padj < 0.05 & SFI_NIT_res2$log2FoldChange < -1, "symbol"])
 
-genes = mapIds(org.Hs.eg.db, genSFI_NIT_res, 'ENTREZID', 'SYMBOL')
-enrich.resultSFI_NIT <- enrichPathway(gene = genes, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
+selectedIDs = mapIds(org.Hs.eg.db, genSFI_NIT_res, 'ENTREZID', 'SYMBOL')
+enrich.resultSFI_NIT <- enrichPathway(selectedIDs, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
 
 barplot(enrich.resultSFI_NIT, showCategory = 10, font.size = 10)
 
@@ -860,8 +867,8 @@ ELI_NIT_res2 <- as.data.frame(ELI_NIT_res)
 
 genELI_NIT_res = c(ELI_NIT_res2[ELI_NIT_res2$padj < 0.05 & ELI_NIT_res2$log2FoldChange > 1, "symbol"], ELI_NIT_res2[ELI_NIT_res2$padj < 0.05 & ELI_NIT_res2$log2FoldChange < -1, "symbol"])
 
-genes = mapIds(org.Hs.eg.db, genELI_NIT_res, 'ENTREZID', 'SYMBOL')
-enrich.resultELI_NIT <- enrichPathway(gene = genes, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
+selectedIDs = mapIds(org.Hs.eg.db, genELI_NIT_res, 'ENTREZID', 'SYMBOL')
+enrich.resultELI_NIT <- enrichPathway(selectedIDs, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
 
 barplot(enrich.resultELI_NIT, showCategory = 10, font.size = 10)
 
@@ -876,8 +883,8 @@ ELI_SFI_res2 <- as.data.frame(ELI_SFI_res)
 
 genELI_SFI_res = c(ELI_SFI_res2[ELI_SFI_res2$padj < 0.05 & ELI_SFI_res2$log2FoldChange > 1, "symbol"], ELI_SFI_res2[ELI_SFI_res2$padj < 0.05 & ELI_SFI_res2$log2FoldChange < -1, "symbol"])
 
-genes = mapIds(org.Hs.eg.db, genELI_NIT_res, 'ENTREZID', 'SYMBOL')
-enrich.resultELI_SFI <- enrichPathway(gene = genes, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
+selectedIDs = mapIds(org.Hs.eg.db, genELI_NIT_res, 'ENTREZID', 'SYMBOL')
+enrich.resultELI_SFI <- enrichPathway(selectedIDs, pvalueCutoff = 0.05, readable = T, organism = "human", universe = universe)
 
 barplot(enrich.resultELI_SFI, showCategory = 10, font.size = 10)
 
@@ -904,7 +911,7 @@ boxplot(assay(vsd), border = c(rep("coral2", 10), rep("cyan1", 10), rep("darkoli
 dev.off()
 
 pdf(file="./results/VolcanoPlotSFI-NIT.pdf")
-plot(SFI_NIT_res2$log2FoldChange, -log10(SFI_NIT_res2$padj), pch=20, main="Volcano plot SFI-NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+plot(SFI_NIT_res2$log2FoldChange, -log10(SFI_NIT_res2$padj), pch=20, main="Volcano plot SFI vs NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
 with(subset(SFI_NIT_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
 abline(v=0, col="black", lty=3, lwd=1.0)
 abline(v=-2, col="black", lty=4, lwd=2.0)
@@ -914,7 +921,7 @@ dev.off()
 
 
 pdf(file="./results/VolcanoPlotELI-NIT.pdf")
-plot(ELI_NIT_res2$log2FoldChange, -log10(ELI_NIT_res2$padj), pch=20, main="Volcano plot ELI-NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+plot(ELI_NIT_res2$log2FoldChange, -log10(ELI_NIT_res2$padj), pch=20, main="Volcano plot ELI vs NIT", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
 with(subset(ELI_NIT_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
 abline(v=0, col="black", lty=3, lwd=1.0)
 abline(v=-2, col="black", lty=4, lwd=2.0)
@@ -923,7 +930,7 @@ abline(h=-log10(max(ELI_NIT_res2$pvalue[ELI_NIT_res2$padj<0.05], na.rm=TRUE)), c
 dev.off()
 
 pdf(file="./results/VolcanoPlotELI-SFI.pdf")
-plot(ELI_SFI_res2$log2FoldChange, -log10(ELI_SFI_res2$padj), pch=20, main="Volcano plot ELI-SFI", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
+plot(ELI_SFI_res2$log2FoldChange, -log10(ELI_SFI_res2$padj), pch=20, main="Volcano plot ELI vs SFI", cex=1.0, xlab=bquote(~Log[2]~fold~change), ylab=bquote(~-log[10]~Q~value))
 with(subset(ELI_SFI_res2, padj<0.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(padj), pch=20, col="red", cex=0.5))
 abline(v=0, col="black", lty=3, lwd=1.0)
 abline(v=-2, col="black", lty=4, lwd=2.0)
